@@ -12,6 +12,10 @@
 - 限制必須從指定 Feature Branch Prefix 執行。
 - 依版本號自動產生 Release Branch 與 Release Tag。
 - 依既有流程執行 Pull、Fetch、Create Branch、Commit、Rebase、Push、Tag。
+- 支援參數化執行，方便自動化或 CI/CD 整合。
+- 支援 dry-run 預覽模式，不執行 Git 寫入操作。
+- 支援自訂版本號驗證規則。
+- 支援可選的 Release Note Markdown 產生。
 - 使用 `Start-Transcript` 產生執行紀錄。
 - 發生錯誤時停止流程並輸出錯誤訊息。
 
@@ -51,9 +55,18 @@ C:\Program Files\Git\bin\git.exe
     "Remote": "origin",
     "MainBranch": "master",
     "CommitMessage": "Sample Release",
+    "DefaultProject": "sample",
+    "VersionPattern": "^\\d+\\.\\d+\\.\\d+$",
+    "VersionExample": "1.0.0",
     "FeaturePrefix": "feature/",
     "ReleaseBranchPrefix": "RB",
     "ReleaseTagPrefix": "REL",
+    "DryRun": false,
+    "ConfirmBeforePush": true,
+    "ReleaseNotes": {
+        "Enabled": false,
+        "Directory": ".\\ReleaseNotes"
+    },
     "Projects": {
         "sample": "C:\\Git\\SampleProject"
     }
@@ -67,9 +80,15 @@ C:\Program Files\Git\bin\git.exe
 - `Remote`：Git remote 名稱，例如 `origin`。
 - `MainBranch`：Release 要推送的主要分支名稱，例如 `master` 或 `main`。
 - `CommitMessage`：Release commit 與 annotated tag 使用的訊息。
+- `DefaultProject`：未輸入 project 時使用的預設專案代號。
+- `VersionPattern`：版本號驗證用 regular expression。
+- `VersionExample`：畫面顯示用版本範例。
 - `FeaturePrefix`：允許執行 Release 的 Feature Branch prefix。
 - `ReleaseBranchPrefix`：Release Branch prefix。
 - `ReleaseTagPrefix`：Release Tag prefix。
+- `DryRun`：設定為 `true` 時只顯示 release branch、tag 與流程，不執行 Git 寫入操作。
+- `ConfirmBeforePush`：設定為 `true` 時，push 到 main branch 前要求再次確認。
+- `ReleaseNotes`：設定為 enabled 時，release 完成後輸出 Markdown release note。
 - `Projects`：專案代號與本機 repository 路徑對應表。
 
 ## Release 流程
@@ -92,7 +111,8 @@ C:\Program Files\Git\bin\git.exe
 14. Push Release Branch to configured remote main branch
 15. Create Release Tag
 16. Push Release Tag
-17. Show Release Result
+17. Create Release Note if enabled
+18. Show Release Result
 
 ## 使用方式
 
@@ -106,6 +126,24 @@ cd C:\Git\ReleaseTool
 
 ```powershell
 .\Release.ps1
+```
+
+參數化執行：
+
+```powershell
+.\Release.ps1 -Project sample -Version 1.0.0
+```
+
+Dry-run 預覽：
+
+```powershell
+.\Release.ps1 -Project sample -Version 1.0.0 -DryRun
+```
+
+非互動模式：
+
+```powershell
+.\Release.ps1 -Project sample -Version 1.0.0 -NonInteractive
 ```
 
 輸入專案代號：
@@ -125,6 +163,7 @@ Version (ex:1.0.0): 1.0.0
 ```text
 Release Branch : RB-sample-1.0.0
 Release Tag    : REL-sample-1.0.0
+Dry Run        : False
 ```
 
 Push 到設定的 remote main branch 前會再次要求確認。
@@ -162,15 +201,27 @@ Flow:
 
 `Log/` 可能包含本機路徑、使用者名稱、remote URL、branch/tag 名稱與 Git 輸出，因此公開 repository 預設透過 `.gitignore` 排除。
 
+## Release Notes
+
+將 `ReleaseNotes.Enabled` 設為 `true` 後，工具會在 release 完成後輸出 Markdown release note。
+
+```json
+"ReleaseNotes": {
+    "Enabled": true,
+    "Directory": ".\\ReleaseNotes"
+}
+```
+
+`ReleaseNotes/` 屬於本機執行產物，預設不提交到 Git。
+
 ## 後續可擴充功能
 
-- 支援 dry-run 模式。
 - 支援 dry-run 前的 Git 指令預覽強化。
 - 支援多 remote 或多環境 release profile。
 - 加入 Pester 測試。
-- 將互動式輸入改為參數化，方便 CI/CD 使用。
-- 加入 release note 產生功能。
+- 加入 GitHub Release API 整合。
 
 ## License
 
 MIT License
+

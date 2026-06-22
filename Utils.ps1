@@ -144,11 +144,136 @@ function Test-Version {
 
     param(
 
-        [string]$Version
+        [string]$Version,
+
+        [string]$Pattern = '^\d+\.\d+\.\d+$'
 
     )
 
-    return ($Version -match '^\d+\.\d+\.\d+$')
+    return ($Version -match $Pattern)
+
+}
+
+#----------------------------------------------------
+# Resolve Configured Path
+#----------------------------------------------------
+function Resolve-ConfiguredPath {
+
+    param(
+
+        [Parameter(Mandatory)]
+        [string]$Path,
+
+        [string]$BasePath = $PSScriptRoot
+
+    )
+
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return $Path
+    }
+
+    return Join-Path $BasePath $Path
+
+}
+
+#----------------------------------------------------
+# Get Config Boolean
+#----------------------------------------------------
+function Get-ConfigBoolean {
+
+    param(
+
+        [object]$Config,
+
+        [Parameter(Mandatory)]
+        [string]$Name,
+
+        [bool]$Default = $false
+
+    )
+
+    if ($null -eq $Config) {
+        return $Default
+    }
+
+    $property = $Config.PSObject.Properties[$Name]
+
+    if ($null -eq $property -or $null -eq $property.Value) {
+        return $Default
+    }
+
+    return [bool]$property.Value
+
+}
+
+#----------------------------------------------------
+# Write Release Note
+#----------------------------------------------------
+function New-ReleaseNote {
+
+    param(
+
+        [Parameter(Mandatory)]
+        [string]$Directory,
+
+        [Parameter(Mandatory)]
+        [string]$Project,
+
+        [Parameter(Mandatory)]
+        [string]$Version,
+
+        [Parameter(Mandatory)]
+        [string]$Branch,
+
+        [Parameter(Mandatory)]
+        [string]$Tag,
+
+        [Parameter(Mandatory)]
+        [string]$CommitMessage,
+
+        [Parameter(Mandatory)]
+        [string]$Remote,
+
+        [Parameter(Mandatory)]
+        [string]$MainBranch,
+
+        [string]$CommitHash
+
+    )
+
+    if (!(Test-Path $Directory)) {
+        New-Item -ItemType Directory -Path $Directory | Out-Null
+    }
+
+    $fileName = "{0}_{1}.md" -f $Project, $Version
+    $filePath = Join-Path $Directory $fileName
+    $createdAt = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+
+    $content = @"
+# Release Note
+
+| Item | Value |
+| --- | --- |
+| Project | $Project |
+| Version | $Version |
+| Branch | $Branch |
+| Tag | $Tag |
+| Commit | $CommitHash |
+| Remote | $Remote |
+| Main Branch | $MainBranch |
+| Commit Message | $CommitMessage |
+| Created At | $createdAt |
+
+## Summary
+
+- Release branch and tag were created by the PowerShell Git Release Automation Tool.
+- Update this section with release highlights before publishing externally.
+
+"@
+
+    Set-Content -LiteralPath $filePath -Value $content -Encoding UTF8
+
+    return $filePath
 
 }
 

@@ -1,13 +1,23 @@
-{
+﻿{
     "GitExe": "C:\\Program Files\\Git\\bin\\git.exe",
     "LogDirectory": ".\\Log",
     "Remote": "origin",
     "MainBranch": "master",
     "CommitMessage": "Sample Release",
+    "DefaultProject": "sample",
+    "VersionPattern": "^\\d+\\.\\d+\\.\\d+$",
+    "VersionExample": "1.0.0",
     "FeaturePrefix": "feature/",
     "ReleaseBranchPrefix": "RB",
     "ReleaseTagPrefix": "REL",
+    "DryRun": false,
+    "ConfirmBeforePush": true,
+    "ReleaseNotes": {
+        "Enabled": false,
+        "Directory": ".\\ReleaseNotes"
+    },
     "Projects": {
         "sample": "C:\\Git\\SampleProject"
     }
 }
+

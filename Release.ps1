@@ -2,6 +2,13 @@
 # Start Transcript Log
 #==========================
 
+param(
+    [string]$Project,
+    [string]$Version,
+    [switch]$DryRun,
+    [switch]$NonInteractive
+)
+
 $ErrorActionPreference = "Stop"
 
 $config = Get-Content "$PSScriptRoot\Config.json" | ConvertFrom-Json
@@ -38,6 +45,10 @@ try {
     $script:GitExe = $config.GitExe
     $remote = $config.Remote
     $mainBranch = $config.MainBranch
+    $versionPattern = $config.VersionPattern
+    $versionExample = $config.VersionExample
+    $isDryRun = $DryRun.IsPresent -or (Get-ConfigBoolean -Config $config -Name "DryRun")
+    $confirmBeforePush = Get-ConfigBoolean -Config $config -Name "ConfirmBeforePush" -Default $true
 
     #----------------------------------------------------
     # Show Title
@@ -51,7 +62,22 @@ try {
     #----------------------------------------------------
     # Input Project
     #----------------------------------------------------
-    $project = Read-Host "Project Name (ex:sample)"
+    $project = $Project
+
+    if ([string]::IsNullOrWhiteSpace($project)) {
+        $projectExample = $config.DefaultProject
+
+        if ([string]::IsNullOrWhiteSpace($projectExample)) {
+            $projectExample = "sample"
+        }
+
+        if ($NonInteractive) {
+            $project = $projectExample
+        }
+        else {
+            $project = Read-Host "Project Name (ex:$projectExample)"
+        }
+    }
 
     if ([string]::IsNullOrWhiteSpace($project)) {
         throw "Project Name is empty."
@@ -66,32 +92,42 @@ try {
     Write-Host ""
     Write-Host "Repository : $repository"
 
-    if (!(Test-Path $repository)) {
-        throw "Repository does not exist.`n$repository"
+    if (-not $isDryRun) {
+        if (!(Test-Path $repository)) {
+            throw "Repository does not exist.`n$repository"
+        }
+
+        Set-Location $repository
+
+        #----------------------------------------------------
+        # Verify Repository
+        #----------------------------------------------------
+        Verify-Repository
+
+        Ensure-CleanWorkingTree
+
+        Ensure-FeatureBranch $config.FeaturePrefix
     }
-
-    Set-Location $repository
-
-    #----------------------------------------------------
-    # Verify Repository
-    #----------------------------------------------------
-    Verify-Repository
-
-    Ensure-CleanWorkingTree
-
-    Ensure-FeatureBranch $config.FeaturePrefix
 
     #----------------------------------------------------
     # Input Version
     #----------------------------------------------------
-    $version = Read-Host "Version (ex:1.0.0)"
+    $version = $Version
+
+    if ([string]::IsNullOrWhiteSpace($version)) {
+        if ($NonInteractive) {
+            throw "Version is required when NonInteractive mode is enabled."
+        }
+
+        $version = Read-Host "Version (ex:$versionExample)"
+    }
 
     if ([string]::IsNullOrWhiteSpace($version)) {
         throw "Version is empty."
     }
 
-    if (!(Test-Version $version)) {
-        throw "Version format error. ex) 1.0.0"
+    if (!(Test-Version -Version $version -Pattern $versionPattern)) {
+        throw "Version format error. ex) $versionExample"
     }
 
     $releaseBranch = "$($config.ReleaseBranchPrefix)-$project-$version"
@@ -100,6 +136,7 @@ try {
     Write-Host ""
     Write-Host "Release Branch : $releaseBranch"
     Write-Host "Release Tag    : $releaseTag"
+    Write-Host "Dry Run        : $isDryRun"
     Write-Host ""
 
     Write-Host "Flow:"
@@ -113,7 +150,20 @@ try {
     Write-Host "  STEP8  Create Tag"
     Write-Host "  STEP9  Push Tag"
 
-    $answer = Read-Host "Continue ? (Y/N)"
+    if ($isDryRun) {
+        Write-Host ""
+        Write-Host "Dry-run mode is enabled. Git write operations will not be executed." -ForegroundColor Yellow
+        Write-Host "Review the generated branch, tag, and flow above, then run again with DryRun disabled."
+        Write-Host ""
+        return
+    }
+
+    if ($NonInteractive) {
+        $answer = "Y"
+    }
+    else {
+        $answer = Read-Host "Continue ? (Y/N)"
+    }
 
     if ($answer.ToUpper() -ne "Y") {
         Write-Host "Canceled."
@@ -189,7 +239,12 @@ try {
     Write-Host "git push $remote ${releaseBranch}:$mainBranch"
     Write-Host ""
 
-    $pushAnswer = Read-Host "Push to remote $mainBranch ? (Y/N)"
+    if ($confirmBeforePush -and -not $NonInteractive) {
+        $pushAnswer = Read-Host "Push to remote $mainBranch ? (Y/N)"
+    }
+    else {
+        $pushAnswer = "Y"
+    }
 
     if ($pushAnswer.ToUpper() -ne "Y") {
         throw "Push $mainBranch canceled."
@@ -218,7 +273,28 @@ try {
     Push-ReleaseTag `
         -TagName $releaseTag `
         -Remote $remote
+    #----------------------------------------------------
+    # Create Release Note
+    #----------------------------------------------------
+    if ($config.ReleaseNotes -and [bool]$config.ReleaseNotes.Enabled) {
+        $releaseNotesDirectory = Resolve-ConfiguredPath `
+            -Path $config.ReleaseNotes.Directory `
+            -BasePath $PSScriptRoot
 
+        $releaseNote = New-ReleaseNote `
+            -Directory $releaseNotesDirectory `
+            -Project $project `
+            -Version $version `
+            -Branch $releaseBranch `
+            -Tag $releaseTag `
+            -CommitMessage $config.CommitMessage `
+            -Remote $remote `
+            -MainBranch $mainBranch `
+            -CommitHash (Get-HeadCommitHash)
+
+        Write-Host ""
+        Write-Host "Release Note   : $releaseNote"
+    }
     #----------------------------------------------------
     # Show Result
     #----------------------------------------------------
@@ -239,3 +315,5 @@ finally {
     Stop-Transcript
 
 }
+
+
