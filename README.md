@@ -16,6 +16,7 @@
 - 支援 dry-run 預覽模式，不執行 Git 寫入操作。
 - 支援自訂版本號驗證規則。
 - 支援可選的 Release Note Markdown 產生。
+- 提供 `ConfigEditor.ps1` 小型 UI，可視化調整 `Config.json`。
 - 使用 `Start-Transcript` 產生執行紀錄。
 - 發生錯誤時停止流程並輸出錯誤訊息。
 
@@ -24,6 +25,7 @@
 ```text
 ReleaseTool/
 ├── Release.ps1     # Main release workflow
+├── ConfigEditor.ps1 # Visual config editor
 ├── Git.ps1         # Git command helper functions
 ├── Utils.ps1       # Console output and validation helpers
 ├── Config.json     # Public sample configuration
@@ -42,7 +44,32 @@ C:\Program Files\Git\bin\git.exe
 ```
 
 3. 下載或 clone 此專案。
-4. 編輯 `Config.json`，設定本機 Git 路徑、Log 目錄、remote、主分支與要操作的專案目錄。
+4. 使用 `ConfigEditor.ps1` 或手動編輯 `Config.json`，設定本機 Git 路徑、Log 目錄、remote、主分支與要操作的專案目錄。
+
+## Config UI
+
+啟動可視化設定工具：
+
+```powershell
+.\ConfigEditor.ps1
+```
+
+指定其他 config 檔：
+
+```powershell
+.\ConfigEditor.ps1 -ConfigPath .\Config.json
+```
+
+UI 支援：
+
+- 編輯 Git 執行檔路徑、Log 目錄、remote、main branch、commit message。
+- 切換 `DryRun`、`ConfirmBeforePush`、`ReleaseNotes.Enabled`。
+- 編輯版本號格式、branch/tag prefix。
+- 以表格方式新增、修改、刪除 Projects。
+- Validate 檢查必要欄位。
+- Save 將設定寫回 `Config.json`。
+
+`ConfigEditor.ps1` 只負責讀寫 config，不會執行任何 Release Git 流程。
 
 ## Config 說明
 
