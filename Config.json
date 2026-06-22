@@ -1,0 +1,13 @@
+{
+    "GitExe": "C:\\Program Files\\Git\\bin\\git.exe",
+    "LogDirectory": ".\\Log",
+    "Remote": "origin",
+    "MainBranch": "master",
+    "CommitMessage": "Sample Release",
+    "FeaturePrefix": "feature/",
+    "ReleaseBranchPrefix": "RB",
+    "ReleaseTagPrefix": "REL",
+    "Projects": {
+        "sample": "C:\\Git\\SampleProject"
+    }
+}
